@@ -119,7 +119,7 @@ public class Robot extends TimedRobot {
   // How far from the target we want to be
   //0.6 is constant to add from distances on sheets and 2 feet is goal radius
   final double[] GOAL_RANGES_METERS = {Units.feetToMeters(7.5+0.6), Units.feetToMeters(9+0.6),Units.feetToMeters(15+0.6)};
-  final double[] RPS = {33.5, 38, 35};
+  final double[] RPS = {33.5, 36, 35};
   final double[] HOOD_ANGLE_DEG = {35, 36, 38};
 
   private boolean pitchTargeting = false;
@@ -302,7 +302,7 @@ public class Robot extends TimedRobot {
         shooterOn = false;
         pitchTargeting = false;
         currentYaw = 0;
-        consecutiveCorrect = 0;
+        // consecutiveCorrect = 0;
       }
       
       // INTAKE CONTROLS
@@ -417,7 +417,8 @@ public class Robot extends TimedRobot {
       //stop for camera to process
       cameraPitchResult = result.getBestTarget();
       targets = result.getTargets();
-      cameraYawResult = new targetGrouping(targets);
+      
+      // cameraYawResult = new targetGrouping(targets);
 
       leftSpeed = 0;
       rightSpeed = 0;
@@ -433,7 +434,7 @@ public class Robot extends TimedRobot {
         
 
       if(!pitchTargeting) {
-        rotationSpeed = rotationController.calculate(cameraYawResult.getYaw(), 0) / drivetrainVoltageComp;
+        rotationSpeed = rotationController.calculate(cameraPitchResult.getYaw(), 0) / drivetrainVoltageComp;
         rotationSpeed = MathUtil.clamp(rotationSpeed, -1.0, 1.0);
         leftSpeed = rotationSpeed;
         rightSpeed = -rotationSpeed;
@@ -465,16 +466,16 @@ public class Robot extends TimedRobot {
 
       // System.out.println("Yaw: " + cameraYawResult.getYaw() + ", Distance: " + Units.metersToFeet(distanceToGoal) + "Pitch Targeting: " + pitchTargeting);
       //drive.arcadeDrive(rotationSpeed, forwardSpeed);
-      if(cameraYawResult.getYaw() < 1) {
-        consecutiveCorrect++;
-      } else {
-        consecutiveCorrect = 0;
-      }
+      // if(cameraYawResult.getYaw() < 1) {
+      //   consecutiveCorrect++;
+      // } else {
+      //   consecutiveCorrect = 0;
+      // }
 
-      if(!pitchTargeting && consecutiveCorrect == 20) {
+      if(!pitchTargeting && rotationSpeed < 0.1) {
         pitchTargeting = true;
       }
-      System.out.println("Pitch Targeting: " + pitchTargeting + ", Angle: " + cameraYawResult.getYaw());
+      // System.out.println("Pitch Targeting: " + pitchTargeting + ", Angle: " + cameraYawResult.getYaw());
     }
   }
 
@@ -550,16 +551,19 @@ public class Robot extends TimedRobot {
     private double yaw = 0;
     public targetGrouping(List<PhotonTrackedTarget> targetList) {
       for(var i = 0; i < targetList.size(); i++) {
+        // if(targetList.get(i).getArea()>0.1){
+        //   yaw += targetList.get(i).getYaw();
+        // }
         yaw += targetList.get(i).getYaw();
       }
       yaw /= targetList.size();
-      if(currentYaw != 0) {
-        yaw += currentYaw;
-        yaw /= 2;
-        currentYaw = yaw;
-      } else {
-        currentYaw = yaw;
-      }
+      // if(currentYaw != 0) {
+      //   yaw += currentYaw;
+      //   yaw /= 2;
+      //   currentYaw = yaw;
+      // } else {
+      //   currentYaw = yaw;
+      // }
     }
 
     public double getYaw() {
