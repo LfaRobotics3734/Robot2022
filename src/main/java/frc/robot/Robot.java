@@ -164,6 +164,7 @@ public class Robot extends TimedRobot {
     leftSpeed = 0;
     rightSpeed = 0;
     rotationSpeed = 0;
+    
     //kp constants
     rotationKp = 0.39;
     distanceKp = 7.0; //Original was 7.0
@@ -550,14 +551,15 @@ public class Robot extends TimedRobot {
   // Emulates built-in PhotonVision target grouping pipeline
   private class targetGrouping {
     private double yaw = 0;
+    double totalArea=0;
     public targetGrouping(List<PhotonTrackedTarget> targetList) {
       for(var i = 0; i < targetList.size(); i++) {
-        // if(targetList.get(i).getArea()>0.1){
-        //   yaw += targetList.get(i).getYaw();
-        // }
-        yaw += targetList.get(i).getYaw();
+        totalArea+=targetList.get(i).getArea();
       }
-      yaw /= targetList.size();
+      for(var i =0;i<targetList.size();i++){
+        yaw+=targetList.get(i).getYaw()*targetList.get(i).getArea()/totalArea;
+      }
+      //yaw /= targetList.size();
       // if(currentYaw != 0) {
       //   yaw += currentYaw;
       //   yaw /= 2;
