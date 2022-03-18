@@ -166,7 +166,7 @@ public class Robot extends TimedRobot {
     rotationSpeed = 0;
     //kp constants
     rotationKp = 0.39;
-    distanceKp = 10.0; //Original was 7.0
+    distanceKp = 7.0; //Original was 7.0
   
     rotationController = new PIDController(rotationKp, 0, 0);
     forwardController=new PIDController(distanceKp, 0, 0);
@@ -262,7 +262,7 @@ public class Robot extends TimedRobot {
     } else { // Normal Functions
       if(xbox_control.getBackButtonPressed()) {
         camera.setDriverMode(!camera.getDriverMode());
-        System.out.println("Driver Mode Toggled. " + camera.getDriverMode());
+        // System.out.println("Driver Mode Toggled. " + camera.getDriverMode());
       }
 
       if(!xbox_control.getYButton()) {
@@ -318,7 +318,7 @@ public class Robot extends TimedRobot {
           indexerSpeed = 0.0;
         }
       } else {
-        System.out.println(sen1Active + ", " + sen2Active + ", " + sen3Active + ", " + toSen2 + ", " + toSen3 + ", " + sen1.getAverageValue() + ", " + sen2.getAverageValue() + ", " + sen3.getAverageValue() + ", " + indexerSpeed);
+        // System.out.println(sen1Active + ", " + sen2Active + ", " + sen3Active + ", " + toSen2 + ", " + toSen3 + ", " + sen1.getAverageValue() + ", " + sen2.getAverageValue() + ", " + sen3.getAverageValue() + ", " + indexerSpeed);
         
         if (sen1.getAverageValue() < 300) {
           sen1Active = true;
@@ -416,6 +416,7 @@ public class Robot extends TimedRobot {
     if(result.hasTargets()) {
       //stop for camera to process
       cameraPitchResult = result.getBestTarget();
+      // cameraYawResult
       targets = result.getTargets();
       
       // cameraYawResult = new targetGrouping(targets);
@@ -452,30 +453,30 @@ public class Robot extends TimedRobot {
         rpsSetpoint = RPS[bestTargetingDistance];
         shooterOn = true;
         shooterAngleSetpoint = HOOD_ANGLE_DEG[bestTargetingDistance];
-        double forwardSpeed = -forwardController.calculate(distanceToGoal, GOAL_RANGES_METERS[bestTargetingDistance]) / drivetrainVoltageComp;
+        double forwardSpeed = forwardController.calculate(distanceToGoal, GOAL_RANGES_METERS[bestTargetingDistance]) / drivetrainVoltageComp;
         forwardSpeed=MathUtil.clamp(forwardSpeed,-1.0, 1.0);
-        System.out.println("Speed: " + forwardSpeed + " Distance: " + distanceToGoal + " Goal distance: " + GOAL_RANGES_METERS[bestTargetingDistance]);
+        // System.out.println("Speed: " + forwardSpeed + " Distance: " + distanceToGoal + " Goal distance: " + GOAL_RANGES_METERS[bestTargetingDistance]);
         leftSpeed = forwardSpeed;
         rightSpeed = forwardSpeed;
         // targets = cameraYawResult.getTargets();
         // target = cameraYawResult.getBestTarget();
+        System.out.println("Pitch Targeting: " + forwardSpeed + ", Distance: " + distanceToGoal);
       }
       
-      //System.out.println("Goal: " + Units.metersToFeet(GOAL_RANGES_METERS[bestTargetingDistance]) + ", Actual: " + Units.metersToFeet(distanceToGoal) + ", Angle: " + shooterAngleSetpoint + ", Speed: " + rpsSetpoint);
+      //// System.out.println("Goal: " + Units.metersToFeet(GOAL_RANGES_METERS[bestTargetingDistance]) + ", Actual: " + Units.metersToFeet(distanceToGoal) + ", Angle: " + shooterAngleSetpoint + ", Speed: " + rpsSetpoint);
       //if rotationSpeed less than certain point, then set to 0
 
-      // System.out.println("Yaw: " + cameraYawResult.getYaw() + ", Distance: " + Units.metersToFeet(distanceToGoal) + "Pitch Targeting: " + pitchTargeting);
+      // // System.out.println("Yaw: " + cameraYawResult.getYaw() + ", Distance: " + Units.metersToFeet(distanceToGoal) + "Pitch Targeting: " + pitchTargeting);
       //drive.arcadeDrive(rotationSpeed, forwardSpeed);
       // if(cameraYawResult.getYaw() < 1) {
       //   consecutiveCorrect++;
       // } else {
       //   consecutiveCorrect = 0;
       // }
-
       if(!pitchTargeting && rotationSpeed < 0.1) {
         pitchTargeting = true;
       }
-      // System.out.println("Pitch Targeting: " + pitchTargeting + ", Angle: " + cameraYawResult.getYaw());
+      // // System.out.println("Pitch Targeting: " + pitchTargeting + ", Angle: " + cameraYawResult.getYaw());
     }
   }
 
@@ -493,7 +494,7 @@ public class Robot extends TimedRobot {
   public void autonomousInit() {
     m_autoSelected = m_chooser.getSelected();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
-    System.out.println("Auto selected: " + m_autoSelected);
+    // System.out.println("Auto selected: " + m_autoSelected);
   }
 
   /** This function is called periodically during autonomous. */
