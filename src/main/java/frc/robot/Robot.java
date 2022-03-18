@@ -120,9 +120,10 @@ public class Robot extends TimedRobot {
   final double CAMERA_PITCH_RADIANS = Units.degreesToRadians(30.0);// on the front wheels
   // How far from the target we want to be
   //0.6 is constant to add from distances on sheets and 2 feet is goal radius
-final double[] GOAL_RANGES_METERS = {Units.feetToMeters(9+0.6),Units.feetToMeters(13.3942+0.6)};
-  final double[] RPS = {36, 42};
+  final double[] GOAL_RANGES_METERS = {Units.feetToMeters(9+0.6),Units.feetToMeters(13.3942+0.6)};
+  final double[] RPS = {42, 42};
   final double[] HOOD_ANGLE_DEG = {36, 38};
+  private int bestDistanceIndex = -1;
 
   private boolean pitchTargeting = false;
 
@@ -190,7 +191,7 @@ final double[] GOAL_RANGES_METERS = {Units.feetToMeters(9+0.6),Units.feetToMeter
     indexer.enableVoltageCompensation(true);
     indexer.configVoltageCompSaturation(11);
     indexerSpeed = 0;
-    automaticIndexerOn = false;
+    automaticIndexerOn = true;
     sen1 = new AnalogInput(0);
     sen1.setOversampleBits(4);
     sen1.setAverageBits(8);
@@ -277,15 +278,15 @@ final double[] GOAL_RANGES_METERS = {Units.feetToMeters(9+0.6),Units.feetToMeter
           leftSpeed = 0;
           rightSpeed = 0;
         } else {
-          leftSpeed = rightSpeed = Math.pow(xbox_control.getRightTriggerAxis(), 2);
+          leftSpeed = rightSpeed = Math.pow(xbox_control.getRightTriggerAxis(), 3);
         }
 
         if (xbox_control.getRightTriggerAxis() < 0.05 && xbox_control.getLeftTriggerAxis() > 0.05) {
-          leftSpeed = rightSpeed = -1 * Math.pow(xbox_control.getLeftTriggerAxis(), 2);
+          leftSpeed = rightSpeed = -1 * Math.pow(xbox_control.getLeftTriggerAxis(), 3);
         }
 
         if (Math.abs(xbox_control.getRightX()) > 0.2) {
-          rotationSpeed = Math.pow(xbox_control.getRightX(), 2);
+          rotationSpeed = Math.abs(Math.pow(xbox_control.getRightX(), 3));
           if (xbox_control.getRightX() < 0) {
             rotationSpeed = -1 * rotationSpeed;
           }
@@ -297,10 +298,7 @@ final double[] GOAL_RANGES_METERS = {Units.feetToMeters(9+0.6),Units.feetToMeter
         rightSpeed = MathUtil.clamp(rightSpeed, -1, 1);
       
       } else {
-        if(rotationKp!=SmartDashboard.getNumber("rotationKp", 0)){
-          rotationKp=SmartDashboard.getNumber("rotationKp", 0);
-          rotationController = new PIDController(rotationKp, 0, 0);
-        }
+        
         // AUTO DRIVETRAIN CONTROLS
         target();
        }
@@ -313,17 +311,35 @@ final double[] GOAL_RANGES_METERS = {Units.feetToMeters(9+0.6),Units.feetToMeter
         pitchTargeting = false;
         currentYaw = 0;
         consecutiveCorrect = 0;
+        bestDistanceIndex = -1;
+      }
+
+      // All off button
+      if(xbox_control.getPOV() == 180) {
+        shooterOn = false;
+        intakeOn = false;
+        indexer.set(ControlMode.PercentOutput, 0);
       }
       
-      // INTAKE CONTROLS
-      if (xbox_control.getStartButtonPressed()) {
+      // Short Shot
+      if(xbox_control.getBButtonPressed()) {
+        rpsSetpoint = 29;
+        shooterAngleSetpoint = 1;
+        shooterOn = true;
+      }
+
+      // Intake
+      if (xbox_control.getAButtonPressed()) {
         intakeOn = !intakeOn;
       }
 
       // INDEXER CONTROLS
       if (!automaticIndexerOn) {
         if (xbox_control.getXButton()) {
-          indexerSpeed = 1.0;
+          indexerSpeed = 0.5;
+        } else if(xbox_control.getPOV() == 270) {
+          indexerSpeed = -0.5;
+          
         } else {
           indexerSpeed = 0.0;
         }
@@ -359,6 +375,7 @@ final double[] GOAL_RANGES_METERS = {Units.feetToMeters(9+0.6),Units.feetToMeter
               if (!toSen2) {
                 toSen2 = true;
                 indexerSpeed = 0.3;
+                missedIntakeTimer.start();
               }
             }
           }
@@ -376,7 +393,9 @@ final double[] GOAL_RANGES_METERS = {Units.feetToMeters(9+0.6),Units.feetToMeter
           }
         } else {
           if (xbox_control.getXButton()) {
-            indexerSpeed = 1.0;
+            indexerSpeed = 0.5;
+          } else if(xbox_control.getPOV() == 270) {
+            indexerSpeed = -0.5;
           } else {
             indexerSpeed = 0.0;
           }
@@ -396,7 +415,7 @@ final double[] GOAL_RANGES_METERS = {Units.feetToMeters(9+0.6),Units.feetToMeter
     
     // INTAKE OUTPUT
     if (intakeOn) {
-      intakeRoller.set(-1.0);
+      intakeRoller.set(-0.5);
     } else {
       intakeRoller.set(0.0);
     }
@@ -426,81 +445,84 @@ final double[] GOAL_RANGES_METERS = {Units.feetToMeters(9+0.6),Units.feetToMeter
     result = camera.getLatestResult();
     
     if(result.hasTargets()) {
-      //stop for camera to process
-      cameraPitchResult = result.getBestTarget();
-      cameraYawResult = new targetGrouping(result.getTargets());
+      if(result.getTargets().size() >= 3) { 
+        //stop for camera to process
+        cameraPitchResult = result.getBestTarget();
+        cameraYawResult = new targetGrouping(result.getTargets());
 
-      leftSpeed = 0;
-      rightSpeed = 0;
+        leftSpeed = 0;
+        rightSpeed = 0;
 
-      int bestTargetingDistance = 0;
-
-      double distanceToGoal =
-        PhotonUtils.calculateDistanceToTargetMeters(
-                CAMERA_HEIGHT_METERS,
-                TARGET_HEIGHT_METERS,
-                CAMERA_PITCH_RADIANS,
-                Units.degreesToRadians(cameraPitchResult.getPitch()));
-        
-
-      if(!pitchTargeting) {
-        rotationSpeed = rotationController.calculate(cameraYawResult.getYaw(), 0) / drivetrainVoltageComp;
-        rotationSpeed = MathUtil.clamp(rotationSpeed, -1.0, 1.0);
-        leftSpeed = rotationSpeed;
-        rightSpeed = -rotationSpeed;
-
-        if(rotationSpeed < 0.1) {
-          consecutiveCorrect++;
-        } else {
-          consecutiveCorrect = 0;
+        double distanceToGoal =
+            PhotonUtils.calculateDistanceToTargetMeters(
+                    CAMERA_HEIGHT_METERS,
+                    TARGET_HEIGHT_METERS,
+                    CAMERA_PITCH_RADIANS,
+                    Units.degreesToRadians(cameraPitchResult.getPitch()));
           
-        }
-        System.out.println(rotationSpeed + ", " + consecutiveCorrect);
-        // targets = cameraPitchResult.getTargets();
-        // target = cameraPitchResult.getBestTarget();
-      } else {
-        double currentLowestDistance = distanceToGoal;
-        for(int i = 0; i < GOAL_RANGES_METERS.length; i++) {
-          if(Math.abs(GOAL_RANGES_METERS[i] - distanceToGoal) < currentLowestDistance) {
-            currentLowestDistance = Math.abs(GOAL_RANGES_METERS[i] - distanceToGoal);
-            bestTargetingDistance = i;
+        if(!pitchTargeting) {
+          rotationSpeed = rotationController.calculate(cameraYawResult.getYaw(), 0) / drivetrainVoltageComp;
+          rotationSpeed = MathUtil.clamp(rotationSpeed, -1.0, 1.0);
+          leftSpeed = rotationSpeed;
+          rightSpeed = -rotationSpeed;
+
+          if(rotationSpeed < 0.1) {
+            consecutiveCorrect++;
+          } else {
+            consecutiveCorrect = 0;
+            
           }
-        }
-        /* if(SmartDashboard.getNumber("rps", 0) != 0 && SmartDashboard.getNumber("rps", 0) != rpsSetpoint) {
-          rpsSetpoint = SmartDashboard.getNumber("rps", 0);
-        }
-        else {
-          rpsSetpoint = RPS[bestTargetingDistance];
+          // targets = cameraPitchResult.getTargets();
+          // target = cameraPitchResult.getBestTarget();
+        } else {
+          if(bestDistanceIndex == -1) {
+            double currentLowestDistance = distanceToGoal;
+            for(int i = 0; i < GOAL_RANGES_METERS.length; i++) {
+              if(Math.abs(GOAL_RANGES_METERS[i] - distanceToGoal) < currentLowestDistance) {
+                currentLowestDistance = Math.abs(GOAL_RANGES_METERS[i] - distanceToGoal);
+                bestDistanceIndex = i;
+              }
+            }
+          }
+          // if(SmartDashboard.getNumber("rps", 0) != 0 && SmartDashboard.getNumber("rps", 0) != rpsSetpoint) {
+          //   rpsSetpoint = SmartDashboard.getNumber("rps", 0);
+          // }
+          // else {
+            rpsSetpoint = RPS[bestDistanceIndex];
 
+          // }
+          shooterOn = true;
+          shooterAngleSetpoint = HOOD_ANGLE_DEG[bestDistanceIndex];
+
+          double forwardSpeed = -forwardController.calculate(distanceToGoal, GOAL_RANGES_METERS[bestDistanceIndex]) / drivetrainVoltageComp;
+          forwardSpeed = MathUtil.clamp(forwardSpeed,-1.0, 1.0);
+          // System.out.println("Speed: " + forwardSpeed + " Distance: " + distanceToGoal + " Goal distance: " + GOAL_RANGES_METERS[bestDistanceIndex]);
+          leftSpeed = forwardSpeed;
+          rightSpeed = forwardSpeed;
+          // targets = cameraYawResult.getTargets();
+          // target = cameraYawResult.getBestTarget();
+          System.out.println("Pitch Targeting: " + forwardSpeed + ", Distance: " + distanceToGoal + ", Yaw: " + cameraYawResult.getYaw());
         }
-        shooterOn = true;
-        shooterAngleSetpoint = HOOD_ANGLE_DEG[bestTargetingDistance];*/
-        double forwardSpeed = -forwardController.calculate(distanceToGoal, GOAL_RANGES_METERS[bestTargetingDistance]) / drivetrainVoltageComp;
-        forwardSpeed = MathUtil.clamp(forwardSpeed,-1.0, 1.0);
-        // System.out.println("Speed: " + forwardSpeed + " Distance: " + distanceToGoal + " Goal distance: " + GOAL_RANGES_METERS[bestTargetingDistance]);
-        leftSpeed = forwardSpeed;
-        rightSpeed = forwardSpeed;
-        // targets = cameraYawResult.getTargets();
-        // target = cameraYawResult.getBestTarget();
-        System.out.println("Pitch Targeting: " + forwardSpeed + ", Distance: " + distanceToGoal + ", Yaw: " + cameraYawResult.getYaw());
+        
+        //// System.out.println("Goal: " + Units.metersToFeet(GOAL_RANGES_METERS[bestDistanceIndex]) + ", Actual: " + Units.metersToFeet(distanceToGoal) + ", Angle: " + shooterAngleSetpoint + ", Speed: " + rpsSetpoint);
+        //if rotationSpeed less than certain point, then set to 0
+
+        // // System.out.println("Yaw: " + cameraYawResult.getYaw() + ", Distance: " + Units.metersToFeet(distanceToGoal) + "Pitch Targeting: " + pitchTargeting);
+        //drive.arcadeDrive(rotationSpeed, forwardSpeed);
+        // if(cameraYawResult.getYaw() < 1) {
+        //   consecutiveCorrect++;
+        // } else {
+        //   consecutiveCorrect = 0;
+        // }
+
+        
+        if(!pitchTargeting && consecutiveCorrect == 25) {
+          pitchTargeting = true;
+        }
+        // // System.out.println("Pitch Targeting: " + pitchTargeting + ", Angle: " + cameraYawResult.getYaw());
       }
-      
-      //// System.out.println("Goal: " + Units.metersToFeet(GOAL_RANGES_METERS[bestTargetingDistance]) + ", Actual: " + Units.metersToFeet(distanceToGoal) + ", Angle: " + shooterAngleSetpoint + ", Speed: " + rpsSetpoint);
-      //if rotationSpeed less than certain point, then set to 0
-
-      // // System.out.println("Yaw: " + cameraYawResult.getYaw() + ", Distance: " + Units.metersToFeet(distanceToGoal) + "Pitch Targeting: " + pitchTargeting);
-      //drive.arcadeDrive(rotationSpeed, forwardSpeed);
-      // if(cameraYawResult.getYaw() < 1) {
-      //   consecutiveCorrect++;
-      // } else {
-      //   consecutiveCorrect = 0;
-      // }
-
-      
-      if(!pitchTargeting && consecutiveCorrect == 25) {
-        pitchTargeting = true;
-      }
-      // // System.out.println("Pitch Targeting: " + pitchTargeting + ", Angle: " + cameraYawResult.getYaw());
+    } else {
+      rotationSpeed = 0;
     }
   }
 
