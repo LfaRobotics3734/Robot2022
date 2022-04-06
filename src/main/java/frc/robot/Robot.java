@@ -30,9 +30,6 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
-import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
-import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
@@ -45,15 +42,11 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
  * project.
  */
 public class Robot extends TimedRobot {
-  private static final String kDefaultAuto = "Default";
-  private static final String kCustomAuto = "My Auto";
-  private String m_autoSelected;
-  private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
+  /* JOYSTICKS */
   private XboxController xbox_control;
   private Joystick joystick;
 
-  ShuffleboardTab mainBoard = Shuffleboard.getTab("Main");
 
   // DRIVETRAIN motors and corresponding variables
   private WPI_TalonSRX backLeft, backRight, frontLeft, frontRight;
@@ -61,13 +54,12 @@ public class Robot extends TimedRobot {
   private double leftSpeed;
   private double rightSpeed;
   private double rotationSpeed;
-  // private DifferentialDrive drive;
 
   // INTAKE motor and corresponding variables
   private PWMVictorSPX intakeRoller;
   private boolean intakeOn;
 
-  // INTAKE ANGLE motor and corresponding
+  // INTAKE ANGLE motor and corresponding variables
   private TalonSRX intakeAngle;
   private double intakeAngleSpeed;
 
@@ -76,6 +68,7 @@ public class Robot extends TimedRobot {
   private double indexerSpeed;
   private boolean automaticIndexerOn;
 
+  // INDEXER sensors
   private AnalogInput sen1;
   private AnalogInput sen2;
   private AnalogInput sen3;
@@ -85,9 +78,6 @@ public class Robot extends TimedRobot {
   private boolean toSen2;
   private boolean toSen3;
   private Timer missedIntakeTimer;
-
-  private PIDController indexerPID;
-  private SimpleMotorFeedforward indexerFeedForward;
 
   // SHOOTER motors and corresponding variables
   private CANSparkMax shooter1, shooter2;
@@ -108,8 +98,6 @@ public class Robot extends TimedRobot {
   private PhotonPipelineResult result;
   private PhotonTrackedTarget cameraPitchResult;
   private targetGrouping cameraYawResult;
-  private List<PhotonTrackedTarget> targets;
-  private double currentYaw = 0;
   private int consecutiveCorrect = 0;
 
   PIDController rotationController;
@@ -121,14 +109,12 @@ public class Robot extends TimedRobot {
   /* Constants for moving to specific distance */
   final double CAMERA_HEIGHT_METERS = Units.inchesToMeters(26.25);
   final double TARGET_HEIGHT_METERS = Units.inchesToMeters(96);// 104 real
-  // Angle between horizontal and the camera. Current one allows shots from 7 foot
-  // 6 inches to 14 feet
-  final double CAMERA_PITCH_RADIANS = Units.degreesToRadians(30.0);// on the front wheels
+  final double CAMERA_PITCH_RADIANS = Units.degreesToRadians(30.0); 
   // How far from the target we want to be
   // 0.6 is constant to add from distances on sheets and 2 feet is goal radius
   final double GOAL_RANGES_METERS = Units.feetToMeters(9 + 0.6);
-  private double RPS = 46;
-  final double HOOD_ANGLE_DEG = 36;
+  private double RPS = 49;
+  final double HOOD_ANGLE_DEG = 33;
 
   private boolean pitchTargeting = false;
 
@@ -139,10 +125,12 @@ public class Robot extends TimedRobot {
   private Timer autonomousIntakeAngleTimer;
   private Timer autonomousTimeoutMovingForward;
   private Timer autonomousFinishAuto;
-  private boolean autonomousTargeting = false;
-  private boolean foundTargets = false;
-  private boolean alreadySetZero = false;
-  private double intakeSpeed=0.0;
+  private boolean autonomousTargeting;
+  private boolean foundTargets;
+  private boolean alreadySetZero;
+  private boolean autonomousStartShooting;
+  private boolean autonomousInited;
+  private double intakeSpeed;
 
   private double rpsConstant = 1;
 
@@ -153,9 +141,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
-    m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
-    m_chooser.addOption("My Auto", kCustomAuto);
-
+     
     // XBOX Controller in PORT 1, check FRC driver station
     xbox_control = new XboxController(1);
     joystick = new Joystick(0);
@@ -189,9 +175,7 @@ public class Robot extends TimedRobot {
     frontRight.configVoltageCompSaturation(drivetrainVoltageComp);
     backLeft.setInverted(true);
     frontLeft.setInverted(true);
-    leftSpeed = 0;
-    rightSpeed = 0;
-    rotationSpeed = 0;
+    
 
     // kp constants
     rotationKp = 0.6; // Original 0.6
@@ -201,12 +185,12 @@ public class Robot extends TimedRobot {
     forwardController = new PIDController(distanceKp, 0, 0);
 
     // INTAKE
-    intakeAngleSpeed = 0;
+    
     intakeAngle = new TalonSRX(5);
     intakeAngle.enableVoltageCompensation(true);
     intakeAngle.configVoltageCompSaturation(5);
     intakeRoller = new PWMVictorSPX(5);
-    intakeOn = false;
+    
 
     // INDEXER
     indexer = new TalonSRX(4);
@@ -214,8 +198,7 @@ public class Robot extends TimedRobot {
     indexer.setInverted(true);
     indexer.enableVoltageCompensation(true);
     indexer.configVoltageCompSaturation(11);
-    indexerSpeed = 0;
-    automaticIndexerOn = true;
+    
     sen1 = new AnalogInput(0);
     sen1.setOversampleBits(4);
     sen1.setAverageBits(8);
@@ -225,9 +208,7 @@ public class Robot extends TimedRobot {
     sen3 = new AnalogInput(2);
     sen3.setOversampleBits(4);
     sen3.setAverageBits(10);
-    sen1Active = false;
-    sen2Active = false;
-    sen3Active = false;
+   
     missedIntakeTimer = new Timer();
 
     // SHOOTER MOTORS (Channel) - initializing encoders and PIDs
@@ -240,8 +221,7 @@ public class Robot extends TimedRobot {
     // shooter2.setSmartCurrentLimit(30, 90);
     shooterPID = new PIDController(2.7528E-09, 0, 0);
     shooterFeedForward = new SimpleMotorFeedforward(0.24231, 0.18758, 0.0052013);
-    shooterOn = false;
-    rpsSetpoint = 0;
+
     // Emergency constant
     SmartDashboard.putNumber("Emergency Constant", rpsConstant);
 
@@ -254,8 +234,6 @@ public class Robot extends TimedRobot {
     shooterAngle.configVoltageCompSaturation(shooterAngleVoltageComp);
     shooterAngle.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Absolute, 0, 30);
     shooterAnglePID = new PIDController(0.1, 0, 0);
-    shooterAngleSetpoint = 1;
-    shooterAngle.setSelectedSensorPosition(50);
 
     // Vision
     camera = new PhotonCamera("mmal_service_16.1");
@@ -268,10 +246,35 @@ public class Robot extends TimedRobot {
     autonomousFinishAuto = new Timer();
     // Constant
   }
+  public void init(){
+    leftSpeed = 0;
+    rightSpeed = 0;
+    rotationSpeed = 0;
+
+    intakeAngleSpeed = 0;
+
+    intakeOn = false;
+
+    indexerSpeed = 0;
+    automaticIndexerOn = true;
+
+    sen1Active = false;
+    sen2Active = false;
+    sen3Active = false;
+
+    shooterOn = false;
+    rpsSetpoint = 0;
+
+    shooterAngleSetpoint = 1;
+    shooterAngle.setSelectedSensorPosition(50);
+  }
 
   /** This function is called periodically during operator control. */
   @Override
   public void robotPeriodic() {
+    double currentRPS = shooterFeedForward.calculate(rpsSetpoint * rpsConstant) + shooterPID.calculate(shooter1.getEncoder().getVelocity() * 1.5 / 60);
+    //System.out.println(currentRPS + " RPS");
+
     rpsConstant = SmartDashboard.getNumber("Emergency Constant", 1);
     intakeAngle.set(ControlMode.PercentOutput, intakeAngleSpeed);
 
@@ -320,6 +323,7 @@ public class Robot extends TimedRobot {
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {
+    init();
   }
 
   /**
@@ -378,7 +382,6 @@ public class Robot extends TimedRobot {
       shooterAngleSetpoint = 1;
       shooterOn = false;
       pitchTargeting = false;
-      currentYaw = 0;
       consecutiveCorrect = 0;
     }
 
@@ -469,9 +472,6 @@ public class Robot extends TimedRobot {
 
     
 
-    // System.out.println(shooter1.getOutputCurrent() + ", " +
-    // shooter2.getOutputCurrent());
-
   }
 
   private void target() {
@@ -515,16 +515,9 @@ public class Robot extends TimedRobot {
     //// Units.metersToFeet(GOAL_RANGES_METERS[bestDistanceIndex]) + ", Actual: " +
     //// Units.metersToFeet(distanceToGoal) + ", Angle: " + shooterAngleSetpoint +
     //// ", Speed: " + rpsSetpoint);
-    // if rotationSpeed less than certain point, then set to 0
 
     // // System.out.println("Yaw: " + cameraYawResult.getYaw() + ", Distance: " +
     // Units.metersToFeet(distanceToGoal) + "Pitch Targeting: " + pitchTargeting);
-    // drive.arcadeDrive(rotationSpeed, forwardSpeed);
-    // if(cameraYawResult.getYaw() < 1) {
-    // consecutiveCorrect++;
-    // } else {
-    // consecutiveCorrect = 0;
-    // }
 
     if (!pitchTargeting && consecutiveCorrect == 25) {
       pitchTargeting = true;
@@ -553,21 +546,30 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousInit() {
-
+    init();
     // make sure ball aligned on camera (a little to left)
     // go forward until sense another ball
     // intake, turn until shooter and shoot
+    
     // USE ACTUAL BALL DISTANCES
-    // RESET EVERYTHING AFTER AUTONOMOUS - shooter angle, shooter motor,
     // PUT FIRST BALL FURTHER IN
+    /* reset booleans */
     autonomousTargeting = false;
     alreadySetZero=false;
     foundTargets=false; 
-
-    
+    autonomousInited=false;
+    autonomousStartShooting=false;
+    /* reset timers */
+    autonomousExtraIntakeTimer.reset();
+    autonomousWaitShootingTimer.reset();
+    autonomousIntakeAngleTimer.reset();
+    autonomousTimeoutMovingForward.reset();
+    autonomousFinishAuto.reset();
+    /* Initialize */
     autonomousIntakeAngleTimer.start();
     autonomousTimeoutMovingForward.start();
     intakeAngleSpeed = -0.5;
+    intakeSpeed=0.0;
   }
 
   /** This function is called periodically during autonomous. */
@@ -583,12 +585,14 @@ public class Robot extends TimedRobot {
       intakeSpeed=-0.5;
     }
     // Reset after shots fired
-    if(!sen1Active && !sen2Active && !sen3Active) {
+    if(autonomousStartShooting&&!sen1Active && !sen2Active && !sen3Active) {
       autonomousFinishAuto.start();
     }
-    if(autonomousFinishAuto.get() > 3) {
+    if(autonomousFinishAuto.get() > 3&&!autonomousInited) {
+      autonomousInited=true;
+      System.out.println("initing");
       shooterOn = false;
-      robotInit();
+      init();
     }
 
     if (autonomousExtraIntakeTimer.get() > 2) {
@@ -617,11 +621,12 @@ public class Robot extends TimedRobot {
         }
         if (autonomousWaitShootingTimer.get() > 3) {
           indexerSpeed=0.5;
+          autonomousStartShooting=true;
         }
     
       }
 
-    } else if (sen1Active || autonomousTimeoutMovingForward.get() > 5) {
+    } else if (sen1Active || autonomousTimeoutMovingForward.get() > 7) {
       leftSpeed=0;
       rightSpeed=0;
 
