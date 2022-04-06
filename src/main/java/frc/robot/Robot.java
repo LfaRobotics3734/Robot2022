@@ -138,6 +138,7 @@ public class Robot extends TimedRobot {
   private Timer autonomousWaitShootingTimer;
   private Timer autonomousIntakeAngleTimer;
   private Timer autonomousTimeoutMovingForward;
+  private Timer autonomousFinishAuto;
   private boolean autonomousTargeting = false;
   private boolean foundTargets = false;
   private boolean alreadySetZero = false;
@@ -264,7 +265,7 @@ public class Robot extends TimedRobot {
     autonomousWaitShootingTimer = new Timer();
     autonomousIntakeAngleTimer = new Timer();
     autonomousTimeoutMovingForward = new Timer();
-
+    autonomousFinishAuto = new Timer();
     // Constant
   }
 
@@ -581,6 +582,14 @@ public class Robot extends TimedRobot {
       intakeAngleSpeed = 0.0;
       intakeSpeed=-0.5;
     }
+    // Reset after shots fired
+    if(!sen1Active && !sen2Active && !sen3Active) {
+      autonomousFinishAuto.start();
+    }
+    if(autonomousFinishAuto.get() > 3) {
+      shooterOn = false;
+      robotInit();
+    }
 
     if (autonomousExtraIntakeTimer.get() > 2) {
       intakeSpeed=0.0;
@@ -669,23 +678,21 @@ public class Robot extends TimedRobot {
     private double yaw = 0;
 
     public targetGrouping(List<PhotonTrackedTarget> targetList) {
-      double totalArea = 0;
+      double avgArea = 0;
       yaw = 0;
       for (var i = 0; i < targetList.size(); i++) {
-        totalArea += targetList.get(i).getArea();
+        avgArea += targetList.get(i).getArea();
       }
+      avgArea /= targetList.size();
+
       for (var i = 0; i < targetList.size(); i++) {
-        yaw += targetList.get(i).getYaw() * targetList.get(i).getArea() / totalArea;
+        // yaw += targetList.get(i).getYaw() * targetList.get(i).getArea() / totalArea;
+        if(targetList.get(i).getArea() > avgArea / 4) {
+          yaw += targetList.get(i).getYaw();
+        }
       }
+      yaw /= targetList.size();
       System.out.println(yaw);
-      // yaw /= targetList.size();
-      // if(currentYaw != 0) {
-      // yaw += currentYaw;
-      // yaw /= 2;
-      // currentYaw = yaw;
-      // } else {
-      // currentYaw = yaw;
-      // }
     }
 
     public double getYaw() {
