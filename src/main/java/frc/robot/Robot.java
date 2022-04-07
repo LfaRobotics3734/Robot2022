@@ -312,7 +312,7 @@ public class Robot extends TimedRobot {
     // SHOOTER OUTPUT
     if (shooterOn) {
       shooter1.setVoltage(shooterFeedForward.calculate(rpsSetpoint * rpsConstant)
-          + shooterPID.calculate(shooter1.getEncoder().getVelocity() * 1.5 / 60, rpsSetpoint));
+          + shooterPID.calculate(shooter1.getEncoder().getVelocity() * 1.5 / 60, rpsSetpoint * rpsConstant));
     } else {
       shooter1.setVoltage(0.0);
     }
@@ -511,19 +511,10 @@ public class Robot extends TimedRobot {
       System.out.println(
           "Pitch Targeting: " + forwardSpeed + ", Distance: " + distanceToGoal + ", Yaw: " + cameraYawResult.getYaw());
     }
-    //// System.out.println("Goal: " +
-    //// Units.metersToFeet(GOAL_RANGES_METERS[bestDistanceIndex]) + ", Actual: " +
-    //// Units.metersToFeet(distanceToGoal) + ", Angle: " + shooterAngleSetpoint +
-    //// ", Speed: " + rpsSetpoint);
-
-    // // System.out.println("Yaw: " + cameraYawResult.getYaw() + ", Distance: " +
-    // Units.metersToFeet(distanceToGoal) + "Pitch Targeting: " + pitchTargeting);
-
+    
     if (!pitchTargeting && consecutiveCorrect == 25) {
       pitchTargeting = true;
     }
-    // // System.out.println("Pitch Targeting: " + pitchTargeting + ", Angle: " +
-    // cameraYawResult.getYaw());
 
   }
 
@@ -681,6 +672,7 @@ public class Robot extends TimedRobot {
   // Emulates built-in PhotonVision target grouping pipeline
   private class targetGrouping {
     private double yaw = 0;
+    private double groupingSize = 0;
 
     public targetGrouping(List<PhotonTrackedTarget> targetList) {
       double avgArea = 0;
@@ -694,9 +686,10 @@ public class Robot extends TimedRobot {
         // yaw += targetList.get(i).getYaw() * targetList.get(i).getArea() / totalArea;
         if(targetList.get(i).getArea() > avgArea / 4) {
           yaw += targetList.get(i).getYaw();
+          groupingSize++;
         }
       }
-      yaw /= targetList.size();
+      yaw /= groupingSize;
       System.out.println(yaw);
     }
 
