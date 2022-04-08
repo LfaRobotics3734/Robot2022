@@ -99,26 +99,32 @@ public class Robot extends TimedRobot {
   private PhotonTrackedTarget cameraPitchResult;
   private targetGrouping cameraYawResult;
   private int consecutiveCorrect = 0;
-
+  
+  //PID Controllers
   PIDController rotationController;
   PIDController forwardController;
+
   // kP values for targeting and distance
   private double rotationKp;
   private double distanceKp;
 
   /* Constants for moving to specific distance */
   final double CAMERA_HEIGHT_METERS = Units.inchesToMeters(26.25);
-  final double TARGET_HEIGHT_METERS = Units.inchesToMeters(96);// 104 real
+  final double TARGET_HEIGHT_METERS = Units.inchesToMeters(96); // 104 real
   final double CAMERA_PITCH_RADIANS = Units.degreesToRadians(30.0); 
+
   // How far from the target we want to be
   // 0.6 is constant to add from distances on sheets and 2 feet is goal radius
   final double GOAL_RANGES_METERS = Units.feetToMeters(9 + 0.6);
   private double RPS = 49;
   final double HOOD_ANGLE_DEG = 33;
 
+  //If already in right distance
   private boolean pitchTargeting = false;
 
+  //FPV 
   UsbCamera fpvCamera;
+
   /* Autonomous Code */
   private Timer autonomousExtraIntakeTimer;
   private Timer autonomousWaitShootingTimer;
@@ -132,6 +138,7 @@ public class Robot extends TimedRobot {
   private boolean autonomousInited;
   private double intakeSpeed;
 
+  //Constant for emergency
   private double rpsConstant = 1;
 
   /**
@@ -155,6 +162,7 @@ public class Robot extends TimedRobot {
      * If that doesn't work, arp -a in terminal and try port
      * 5800 in browser for the ip adresses that show up
      */
+    
     PortForwarder.add(5800, "photonvision.local", 5800);
 
     // DRIVETRAIN
