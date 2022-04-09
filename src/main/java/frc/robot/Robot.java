@@ -709,7 +709,7 @@ public class Robot extends TimedRobot {
     try {
       System.out.println("Camera Has Targets: "+result.hasTargets() + ", " + log);
     } catch(Exception e) {
-      System.out.println("Error: " + e.getCause() + ", " + log);
+      System.out.println("Error: " + e.getCause().toString() + ", " + log);
     }
     if (result.hasTargets()) {
       //LOG: result targets amount
