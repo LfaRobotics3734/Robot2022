@@ -697,20 +697,25 @@ public class Robot extends TimedRobot {
 
   private boolean hasTargets() {
     result = camera.getLatestResult();
-    String log = "Current Time: "+matchTimer.get()+"Rotation Speed: " + new DecimalFormat("#.##").format(rotationSpeed) +", Distance To Goal (Meters): "+new DecimalFormat("#.##").format(distanceToGoal)+", Forward Speed: "+ new DecimalFormat("#.##").format(forwardSpeed)+", Pitch Targeting: "+pitchTargeting +"Consecutive Correct: "+consecutiveCorrect;
+    try{
+      String log = "Current Time: "+matchTimer.get()+"Rotation Speed: " + new DecimalFormat("#.##").format(rotationSpeed) +", Distance To Goal (Meters): "+new DecimalFormat("#.##").format(distanceToGoal)+", Forward Speed: "+ new DecimalFormat("#.##").format(forwardSpeed)+", Pitch Targeting: "+pitchTargeting +"Consecutive Correct: "+consecutiveCorrect;
 
-    if(cameraYawResult != null) {
-      log += ", Yaw: "+new DecimalFormat("#.##").format(cameraYawResult.getYaw());
+      if(cameraYawResult != null) {
+        log += ", Yaw: "+new DecimalFormat("#.##").format(cameraYawResult.getYaw());
+      }
+
+      if(cameraPitchResult!=null){
+        log+=", Pitch: "+new DecimalFormat("#.##").format(cameraPitchResult.getPitch());
+      }
+      try {
+        System.out.println("Camera Has Targets: "+result.hasTargets() + ", " + log);
+      } catch(Exception e) {
+        System.out.println("Error: " + e.getCause().toString() + ", " + log);
+      } 
+    } catch (Exception e){
+      System.out.println("Failure");
     }
 
-    if(cameraPitchResult!=null){
-      log+=", Pitch: "+new DecimalFormat("#.##").format(cameraPitchResult.getPitch());
-    }
-    try {
-      System.out.println("Camera Has Targets: "+result.hasTargets() + ", " + log);
-    } catch(Exception e) {
-      System.out.println("Error: " + e.getCause().toString() + ", " + log);
-    }
     if (result.hasTargets()) {
       //LOG: result targets amount
       if (result.getTargets().size() >= 2) {
