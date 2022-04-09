@@ -4,6 +4,7 @@
 
 package frc.robot;
 
+import java.text.DecimalFormat;
 import java.util.List;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
@@ -696,14 +697,14 @@ public class Robot extends TimedRobot {
 
   private boolean hasTargets() {
     result = camera.getLatestResult();
-    String log = "Current Time: "+matchTimer.get()+"Rotation Speed: " + rotationSpeed +", Distance To Goal: "+distanceToGoal+", Forward Speed: "+ forwardSpeed+", Pitch Targeting: "+pitchTargeting +"Consecutive Correct: "+consecutiveCorrect;
+    String log = "Current Time: "+matchTimer.get()+"Rotation Speed: " + new DecimalFormat("#.##").format(rotationSpeed) +", Distance To Goal (Meters): "+new DecimalFormat("#.##").format(distanceToGoal)+", Forward Speed: "+ new DecimalFormat("#.##").format(forwardSpeed)+", Pitch Targeting: "+pitchTargeting +"Consecutive Correct: "+consecutiveCorrect;
 
     if(cameraYawResult != null) {
-      log += ", Yaw: "+cameraYawResult.getYaw();
+      log += ", Yaw: "+new DecimalFormat("#.##").format(cameraYawResult.getYaw());
     }
 
-    if(result!=null){
-      log+=", Pitch: "+cameraPitchResult.getPitch();
+    if(cameraPitchResult!=null){
+      log+=", Pitch: "+new DecimalFormat("#.##").format(cameraPitchResult.getPitch());
     }
     try {
       System.out.println("Camera Has Targets: "+result.hasTargets() + ", " + log);
