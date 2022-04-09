@@ -114,9 +114,17 @@ public class Robot extends TimedRobot {
   final double CAMERA_PITCH_RADIANS = Units.degreesToRadians(27.0); 
   // How far from the target we want to be
   // 0.6 is constant to add from distances on sheets and 2 feet is goal radius
-  final double GOAL_RANGES_METERS = Units.feetToMeters(11 + 0.6);
-  private double RPS = 38.5;//49;
-  private double HOOD_ANGLE_DEG = 33;
+  // final double GOAL_RANGES_METERS = Units.feetToMeters(11 + 0.6);
+  // private double RPS = 38.5;//49;
+  // private double HOOD_ANGLE_DEG = 33;
+
+  // final double GOAL_RANGES_METERS = Units.feetToMeters(9 + 0.6);
+  final double GOAL_RANGES_METERS = 3;
+  private double RPS = 33.5;
+  private double HOOD_ANGLE_DEG = 33.5;
+  
+  //CLOSE SHOT
+  private double CLOSE_SHOT=28;
 
   //If already in right distance
   private boolean pitchTargeting = false;
@@ -185,7 +193,7 @@ public class Robot extends TimedRobot {
     
 
     // kp constants
-    rotationKp = 0.65; // Original 0.6
+    rotationKp = 0.6; // Original 0.6
     distanceKp = 7.0; // Original was 7.0
 
     rotationController = new PIDController(rotationKp, 0, 0);
@@ -232,6 +240,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("RPS", RPS);
     SmartDashboard.putNumber("ANGLE", HOOD_ANGLE_DEG);
     SmartDashboard.putNumber("rotationKp", rotationKp);
+    SmartDashboard.putNumber("CLOSE_SHOT", CLOSE_SHOT);
 
     // Emergency constant
     SmartDashboard.putNumber("Emergency Constant", rpsConstant);
@@ -357,6 +366,9 @@ public class Robot extends TimedRobot {
 
     RPS = SmartDashboard.getNumber("RPS", 0);
     HOOD_ANGLE_DEG=SmartDashboard.getNumber("ANGLE", 0);
+
+    CLOSE_SHOT = SmartDashboard.getNumber("CLOSE_SHOT", 0);
+
     // Normal Functions
     if (!joystick.getRawButton(3)) {
       // MANUAL DRIVETRAIN CONTROLS
@@ -413,7 +425,7 @@ public class Robot extends TimedRobot {
 
     // Short Shot
     if (joystick.getRawButton(4)) {
-      rpsSetpoint = 32.3 * rpsConstant;
+      rpsSetpoint = CLOSE_SHOT * rpsConstant;
       shooterAngleSetpoint = 1;
       shooterOn = true;
     }
@@ -464,16 +476,18 @@ public class Robot extends TimedRobot {
     }
 
     if (joystick.getRawButton(1)) {
-      indexerSpeed = 0.5;
+      indexerSpeed = 0.4; // Was .5
       automaticIndexerOn = false;
+      // intakeOn = true;
     } else if (joystick.getRawButton(5)) {
-      indexerSpeed = -0.5;
+      indexerSpeed = -0.4;
       automaticIndexerOn = false;
     }
 
     if (!joystick.getRawButton(1) && !joystick.getRawButton(5) && !automaticIndexerOn) {
       indexerSpeed = 0.0;
       automaticIndexerOn = true;
+      // intakeOn = false;
     }
 
     // RESET HOOD CONTROLS
@@ -506,13 +520,13 @@ public class Robot extends TimedRobot {
         CAMERA_PITCH_RADIANS,
         Units.degreesToRadians(cameraPitchResult.getPitch()));
 
-    // System.out.println(distanceToGoal); 
+    System.out.println(distanceToGoal); 
     // System.out.println("Received Yaw: " + cameraYawResult.getYaw());   
     if (!pitchTargeting) {
 
 
       rotationSpeed = absCompensator(rotationController.calculate(cameraYawResult.getYaw(), 0) / drivetrainVoltageComp);
-      System.out.println("Original: " + rotationController.calculate(cameraYawResult.getYaw(), 0) / drivetrainVoltageComp + ", Altered: " + rotationSpeed);
+    // System.out.println("Original: " + rotationController.calculate(cameraYawResult.getYaw(), 0) / drivetrainVoltageComp + ", Altered: " + rotationSpeed);
       rotationSpeed = MathUtil.clamp(rotationSpeed, -1.0, 1.0);
       leftSpeed = rotationSpeed;
       rightSpeed = -rotationSpeed;
@@ -533,8 +547,8 @@ public class Robot extends TimedRobot {
       forwardSpeed = MathUtil.clamp(forwardSpeed, -1.0, 1.0);
       leftSpeed = forwardSpeed;
       rightSpeed = forwardSpeed;
-      System.out.println(
-          "Pitch Targeting: " + forwardSpeed + ", Distance: " + distanceToGoal + ", Yaw: " + cameraYawResult.getYaw());
+    // System.out.println(
+          // "Pitch Targeting: " + forwardSpeed + ", Distance: " + distanceToGoal + ", Yaw: " + cameraYawResult.getYaw());
     }
     //// System.out.println("Goal: " +
     //// Units.metersToFeet(GOAL_RANGES_METERS[bestDistanceIndex]) + ", Actual: " +
@@ -599,6 +613,18 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
+    /* rpsSetpoint = CLOSE_SHOT;
+    shooterAngleSetpoint = 1;
+    shooterOn = true;
+    indexerSpeed = 0.4;
+    autonomousFinishAuto.start();
+    if(autonomousFinishAuto.get() > 4) {
+      shooterOn = false;
+      indexerSpeed = 0;
+      init();
+    }
+   */
+  
     double currentTime = autonomousTimeoutMovingForward.get();
     if(currentTime<=1){
         leftSpeed=currentTime*0.5;
@@ -611,25 +637,26 @@ public class Robot extends TimedRobot {
     // Reset after shots fired
     if(autonomousStartShooting==true&&(!sen1Active && !sen2Active && !sen3Active)) {
       autonomousFinishAuto.start();
+      intakeSpeed = 0.0;
     }
     if(autonomousFinishAuto.get() > 3&&!autonomousInited) {
       autonomousInited=true;
-      System.out.println("initing");
+    // System.out.println("initing");
       shooterOn = false;
       init();
       
     }
 
-    if (autonomousExtraIntakeTimer.get() > 2) {
-      intakeSpeed=0.0;
+    // if (autonomousExtraIntakeTimer.get() > 3.5) {
+    //   intakeSpeed=0.0;
       
-      autonomousExtraIntakeTimer.stop();
-    }
+    //   autonomousExtraIntakeTimer.stop();
+    // }
     intakeRoller.set(intakeSpeed);
     if (autonomousTargeting) {
       if (!foundTargets) {
-        leftSpeed=0.4;
-        rightSpeed=-0.4;
+        leftSpeed=0.35;
+        rightSpeed=-0.35;
       }
       // target if detect goal
       result = camera.getLatestResult();
@@ -645,7 +672,7 @@ public class Robot extends TimedRobot {
           autonomousWaitShootingTimer.start();
         }
         if (autonomousWaitShootingTimer.get() > 3) {
-          indexerSpeed=0.5;
+          indexerSpeed=0.4;
           autonomousStartShooting=true;
         }
     
@@ -654,9 +681,8 @@ public class Robot extends TimedRobot {
     } else if (sen1Active || autonomousTimeoutMovingForward.get() > 4) {
       leftSpeed=0;
       rightSpeed=0;
-
       autonomousTargeting = true;
-      autonomousExtraIntakeTimer.start();
+      // autonomousExtraIntakeTimer.start();
     }
 
   }
@@ -728,7 +754,7 @@ public class Robot extends TimedRobot {
         }
       }
       yaw /= targetList.size();
-      System.out.println(yaw);
+    // System.out.println(yaw);
     }
 
     public double getYaw() {
