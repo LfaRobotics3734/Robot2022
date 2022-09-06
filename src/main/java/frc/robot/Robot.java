@@ -127,7 +127,7 @@ public class Robot extends TimedRobot {
   private double HOOD_ANGLE_DEG = 33.5;
   
   //CLOSE SHOT
-  private double CLOSE_SHOT=28;
+  private double CLOSE_SHOT=40;
 
   //If already in right distance
   private boolean pitchTargeting = false;
@@ -149,7 +149,7 @@ public class Robot extends TimedRobot {
   private double intakeSpeed;
 
   //Constant for emergency
-  private double rpsConstant = 1;
+  private double rpsConstant = 0;
 
   //Timer for Match Current Time
   private Timer matchTimer;
@@ -245,11 +245,8 @@ public class Robot extends TimedRobot {
     //SHOOTER testing
     SmartDashboard.putNumber("RPS", RPS);
     SmartDashboard.putNumber("ANGLE", HOOD_ANGLE_DEG);
-    SmartDashboard.putNumber("rotationKp", rotationKp);
+   /*  SmartDashboard.putNumber("rotationKp", rotationKp); */
     SmartDashboard.putNumber("CLOSE_SHOT", CLOSE_SHOT);
-
-    // Emergency constant
-    SmartDashboard.putNumber("Emergency Constant", rpsConstant);
 
     // SHOOTER ANGLE - initializing shooter angle motor, encoders, and PIDs
     shooterAngle = new TalonSRX(3);
@@ -304,8 +301,9 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void robotPeriodic() {
-    rpsConstant = SmartDashboard.getNumber("Emergency Constant", 1);
     intakeAngle.set(ControlMode.PercentOutput, intakeAngleSpeed);
+
+    rpsConstant = 0.75 * (1 - joystick.getRawAxis(3));
 
     if (sen1.getAverageValue() < 300) {
       sen1Active = true;
@@ -340,7 +338,7 @@ public class Robot extends TimedRobot {
 
     // SHOOTER OUTPUT
     if (shooterOn) {
-      shooter1.setVoltage(shooterFeedForward.calculate(rpsSetpoint * rpsConstant)
+      shooter1.setVoltage(shooterFeedForward.calculate(rpsSetpoint + rpsConstant)
           + shooterPID.calculate(shooter1.getEncoder().getVelocity() * 1.5 / 60, rpsSetpoint));
     } else {
       shooter1.setVoltage(0.0);
@@ -369,10 +367,10 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    if(rotationKp!=SmartDashboard.getNumber("rotationKp", 0)){
+    /*  if(rotationKp!=SmartDashboard.getNumber ("rotationKp", 0)){
       rotationKp=SmartDashboard.getNumber("rotationKp", 0);
       rotationController = new PIDController(rotationKp, 0, 0);
-    }
+    } */
 
     RPS = SmartDashboard.getNumber("RPS", 0);
     HOOD_ANGLE_DEG=SmartDashboard.getNumber("ANGLE", 0);
@@ -435,13 +433,19 @@ public class Robot extends TimedRobot {
 
     // Short Shot
     if (joystick.getRawButton(4)) {
-      rpsSetpoint = CLOSE_SHOT * rpsConstant;
+      rpsSetpoint = CLOSE_SHOT+rpsConstant;
       shooterAngleSetpoint = 1;
       shooterOn = true;
     }
     if (joystick.getRawButtonReleased(4)) {
       rpsSetpoint = 0;
       shooterOn = false;
+    }
+
+    if (joystick.getRawButton(7)) {
+      shooterAngleSetpoint = 40;
+    } else {
+      shooterAngleSetpoint = 1;
     }
 
     // Intake
@@ -539,7 +543,7 @@ public class Robot extends TimedRobot {
       leftSpeed = rotationSpeed;
       rightSpeed = -rotationSpeed;
 
-      if (rotationSpeed < 0.15) { // was .1, changed for accuracy 4/7 4:39
+      if (rotationSpeed < 0.2) { // was .1, changed for accuracy 4/7 4:39
         consecutiveCorrect++;
       } else {
         consecutiveCorrect = 0;
@@ -663,8 +667,8 @@ public class Robot extends TimedRobot {
     intakeRoller.set(intakeSpeed);
     if (autonomousTargeting) {
       if (!foundTargets) {
-        leftSpeed=0.35;
-        rightSpeed=-0.35;
+        leftSpeed=0.33;
+        rightSpeed=-0.33;
       }
       // target if detect goal
       result = camera.getLatestResult();
@@ -698,14 +702,15 @@ public class Robot extends TimedRobot {
   private boolean hasTargets() {
     result = camera.getLatestResult();
     try{
-      String log = "Current Time: "+matchTimer.get()+"Rotation Speed: " + new DecimalFormat("#.##").format(rotationSpeed) +", Distance To Goal (Meters): "+new DecimalFormat("#.##").format(distanceToGoal)+", Forward Speed: "+ new DecimalFormat("#.##").format(forwardSpeed)+", Pitch Targeting: "+pitchTargeting +"Consecutive Correct: "+consecutiveCorrect;
+      String log = "Current Time: "+new DecimalFormat("#.##").format(matchTimer.get())+", Rotation Speed: " + new DecimalFormat("#.##").format(rotationSpeed) +", Distance To Goal (Meters): "+new DecimalFormat("#.##").format(distanceToGoal)+", Forward Speed: "+ new DecimalFormat("#.##").format(forwardSpeed)+", Pitch Targeting: "+pitchTargeting +", Consecutive Correct: "+consecutiveCorrect;
 
       if(cameraYawResult != null) {
         log += ", Yaw: "+new DecimalFormat("#.##").format(cameraYawResult.getYaw());
       }
 
       if(cameraPitchResult!=null){
-        log+=", Pitch: "+new DecimalFormat("#.##").format(cameraPitchResult.getPitch());
+        log+=", Pitch: "+cameraPitchResult.getPitch();
+        // new DecimalFormat("#.##").format()
       }
       try {
         System.out.println("Camera Has Targets: "+result.hasTargets() + ", " + log);
