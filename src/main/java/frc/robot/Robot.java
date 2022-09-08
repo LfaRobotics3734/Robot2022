@@ -15,6 +15,7 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import org.photonvision.PhotonCamera;
+import org.photonvision.PhotonTargetSortMode;
 import org.photonvision.PhotonUtils;
 import org.photonvision.targeting.PhotonPipelineResult;
 import org.photonvision.targeting.PhotonTrackedTarget;
@@ -99,7 +100,8 @@ public class Robot extends TimedRobot {
   private PhotonCamera camera;
   private PhotonPipelineResult result;
   private PhotonTrackedTarget cameraPitchResult;
-  private targetGrouping cameraYawResult;
+  //private targetGrouping cameraYawResult;
+  private PhotonTrackedTarget cameraYawResult;
   private int consecutiveCorrect = 0;
   
   //PID Controllers
@@ -127,7 +129,7 @@ public class Robot extends TimedRobot {
   private double HOOD_ANGLE_DEG = 33.5;
   
   //CLOSE SHOT
-  private double CLOSE_SHOT=40;
+  private double CLOSE_SHOT=25;
 
   //If already in right distance
   private boolean pitchTargeting = false;
@@ -522,18 +524,19 @@ public class Robot extends TimedRobot {
   private void target() {
     // stop for camera to process
     cameraPitchResult = result.getBestTarget();
-    cameraYawResult = new targetGrouping(result.getTargets());
+    cameraYawResult=result.getBestTarget();
+    //cameraYawResult = new targetGrouping(result.getTargets());
     leftSpeed = 0;
     rightSpeed = 0;
 
-    distanceToGoal = PhotonUtils.calculateDistanceToTargetMeters(
+   /*  distanceToGoal = PhotonUtils.calculateDistanceToTargetMeters(
         CAMERA_HEIGHT_METERS,
         TARGET_HEIGHT_METERS,
         CAMERA_PITCH_RADIANS,
         Units.degreesToRadians(cameraPitchResult.getPitch()));
 
 
-    if (!pitchTargeting) {
+    if (!pitchTargeting) { */
 
 
       rotationSpeed = absCompensator(rotationController.calculate(cameraYawResult.getYaw(), 0) / drivetrainVoltageComp);
@@ -543,7 +546,7 @@ public class Robot extends TimedRobot {
       leftSpeed = rotationSpeed;
       rightSpeed = -rotationSpeed;
 
-      if (rotationSpeed < 0.2) { // was .1, changed for accuracy 4/7 4:39
+      /* if (rotationSpeed < 0.2) { // was .1, changed for accuracy 4/7 4:39
         consecutiveCorrect++;
       } else {
         consecutiveCorrect = 0;
@@ -561,7 +564,7 @@ public class Robot extends TimedRobot {
       rightSpeed = forwardSpeed;
     // System.out.println(
           // "Pitch Targeting: " + forwardSpeed + ", Distance: " + distanceToGoal + ", Yaw: " + cameraYawResult.getYaw());
-    }
+    } */
     //// System.out.println("Goal: " +
     //// Units.metersToFeet(GOAL_RANGES_METERS[bestDistanceIndex]) + ", Actual: " +
     //// Units.metersToFeet(distanceToGoal) + ", Angle: " + shooterAngleSetpoint +
@@ -570,9 +573,9 @@ public class Robot extends TimedRobot {
     // // System.out.println("Yaw: " + cameraYawResult.getYaw() + ", Distance: " +
     // Units.metersToFeet(distanceToGoal) + "Pitch Targeting: " + pitchTargeting);
 
-    if (!pitchTargeting && consecutiveCorrect == 25) {
+   /*  if (!pitchTargeting && consecutiveCorrect == 25) {
       pitchTargeting = true;
-    }
+    } */
     // // System.out.println("Pitch Targeting: " + pitchTargeting + ", Angle: " +
     // cameraYawResult.getYaw());
   }
@@ -723,9 +726,10 @@ public class Robot extends TimedRobot {
 
     if (result.hasTargets()) {
       //LOG: result targets amount
-      if (result.getTargets().size() >= 2) {
+      return true;
+      /* if (result.getTargets().size() >= 2) {
         return true;
-      }
+      } */
     }
     return false;
   }
